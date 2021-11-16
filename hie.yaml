@@ -1,0 +1,8 @@
+cradle:
+  cabal:
+    - path: "./src"
+      component: "lib:mantra-oracle"
+    - path: "./app/Main.hs"
+      component: "exe:mantra-oracle"
+    - path: "./dist-newstyle/build"
+      component: "exe:mantra-oracle"

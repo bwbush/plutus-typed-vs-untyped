@@ -1,0 +1,16 @@
+tmp/
+*.tmp
+*.log
+*.sw?
+dist-newstyle/
+keys/
+*.cid
+*.address
+*.skey
+*.vkey
+*.plutus
+*.core
+*.script
+*.protocol
+tx.*
+tx-*.*

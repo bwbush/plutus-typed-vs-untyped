@@ -1,0 +1,51 @@
+cabal-version     : 2.4
+name              : mantra-oracle
+description       : This Cardano oracle reports structured data (namely, the `PlutuxTx.Data` type) to a transaction if the fee, as a quantity of a fungible token, is paid. It can be incorporated into other smart-contract scripts that use the oracle's value in their validation logic.
+version           : 0.4.1.1
+author            : Brian W Bush <code@functionally.io>
+maintainer        : Brian W Bush <code@functionally.io>
+copyright         : (c) 2021 Brian W Bush
+license           : MIT
+license-file      : LICENSE
+
+homepage   : https://github.com/functionally/mantra-oracle/ReadMe.md
+bug-reports: https://github.com/functionally/mantra-oracle/issues/
+
+source-repository head
+  type    : git
+  location: https://github.com/functionally/mantra-oracle.git
+
+
+executable always-succeeds
+   hs-source-dirs  : app
+   main-is         : Main.hs
+   other-modules   : Paths_mantra_oracle
+   autogen-modules : Paths_mantra_oracle
+   build-depends   : base ^>=4.14.1.0
+                   , aeson
+                   , base16-bytestring
+                   , bytestring
+                   , cardano-api
+                   , containers
+                   , data-default
+                   , extra
+                   , freer-extras
+                   , freer-simple
+                   , mtl
+                   , ouroboros-network
+                   , plutus-contract
+                   , plutus-core
+                   , plutus-ledger
+                   , plutus-ledger-api
+                   , plutus-tx
+                   , plutus-tx-plugin
+                   , prettyprinter
+                   , req ^>= 3.9.0
+                   , serialise
+                   , text
+                   , time
+                   , unordered-containers
+                   , uuid
+                   , vector
+   default-language: Haskell2010
+   ghc-options     : -fplugin-opt PlutusTx.Plugin:defer-errors -Wall
