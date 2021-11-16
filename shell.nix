@@ -4,7 +4,7 @@ in
   project.shellFor {
 
     packages = ps: with ps; [
-      always-succeeds
+      plutus-typed-vs-untyped
     ];
 
     # Set the following to `false` do disable the lengthy building of documentation.
