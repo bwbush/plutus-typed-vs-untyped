@@ -2,7 +2,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude     #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
@@ -16,69 +15,69 @@ module Main (
 
 import PlutusTx.Prelude hiding ((<>))
 
-import Cardano.Api               (AddressAny, NetworkId, PaymentCredential(..), StakeAddressReference(..), makeShelleyAddress, toAddressAny)
-import Cardano.Api.Shelley       (PlutusScript(..), PlutusScriptVersion(..), PlutusScriptV1, Script(..), hashScript, writeFileTextEnvelope)
 import Codec.Serialise           (serialise)
-import Control.Monad             (void)
-import Control.Monad.Extra       (whenJust)
-import Ledger                    (Validator, mkValidatorScript, scriptAddress)
+import Ledger                    (Validator, mkValidatorScript)
 import Ledger.Typed.Scripts      (DatumType, RedeemerType, TypedValidator, ValidatorTypes, mkTypedValidator, validatorScript, wrapValidator)
-import Ledger.Value              (assetClassValueOf)
-import Prelude                   (FilePath, IO, (<>), print, putStrLn, show, writeFile)
-import Plutus.V1.Ledger.Address  (Address, )
-import Plutus.V1.Ledger.Contexts (ScriptContext(..), TxInInfo(..), TxOut(..), findOwnInput, getContinuingOutputs, valueSpent)
-import Plutus.V1.Ledger.Scripts  (Datum(..), DatumHash, unValidatorScript)
-import PlutusPrelude             (pretty)
-import PlutusTx                  (FromData(..), applyCode, compile, liftCode, makeIsDataIndexed, makeLift, unstableMakeIsData)
-import PlutusTx.Code             (CompiledCodeIn(DeserializedCode))
+import Prelude                   (IO, putStrLn, show)
+import Plutus.V1.Ledger.Contexts (ScriptContext(..))
+import Plutus.V1.Ledger.Scripts  (unValidatorScript)
+import PlutusTx                  (compile, makeIsDataIndexed, makeLift)
 
 import qualified Data.ByteString.Short as SBS (ShortByteString, length, toShort)
 import qualified Data.ByteString.Lazy  as LBS (toStrict)
 
 
-data DatumTyped = DatumTyped Integer
-
-unstableMakeIsData ''DatumTyped
-
-
-data RedeemerTyped = RedeemerTyped Integer
-
-unstableMakeIsData ''RedeemerTyped
-
-
-
+--
+-- This prints the following:
+--   Lengths of validators (bytes):
+--     Untyped 'always succeeds':                         14
+--     Typed 'always succeeds' with ScriptContext:        2450
+--     Typed 'always succeeds' with typed datum/redeemer: 2658
+--
 main :: IO ()
 main =
   do
-    print $ SBS.length serialiseUntyped
-    print $ SBS.length serialiseTyped
+    putStrLn ""
+    putStrLn "Lengths of validators (bytes):"
+    putStrLn $ "  Untyped 'always succeeds':                         " ++ show (SBS.length $ serialiseValidator validatorUntyped)
+    putStrLn $ "  Typed 'always succeeds' with ScriptContext:        " ++ show (SBS.length $ serialiseValidator validatorTyped  )
+    putStrLn $ "  Typed 'always succeeds' with typed datum/redeemer: " ++ show (SBS.length $ serialiseValidator validatorTyped1 )
+
+
+serialiseValidator :: Validator
+                   -> SBS.ShortByteString
+serialiseValidator = SBS.toShort . LBS.toStrict . serialise . unValidatorScript
+
+
+-- Untyped validator that always succeeds.
 
 
 {-# INLINABLE makeValidatorUntyped #-}
+
 makeValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
 makeValidatorUntyped _ _ _ = ()
 
 validatorUntyped :: Validator
 validatorUntyped = mkValidatorScript $$(compile [|| makeValidatorUntyped ||])
 
-serialiseUntyped :: SBS.ShortByteString
-serialiseUntyped = SBS.toShort . LBS.toStrict . serialise $ unValidatorScript validatorUntyped
+
+-- Typed validator that always succeeds.
 
 
 {-# INLINABLE makeValidatorTyped #-}
 
-makeValidatorTyped :: DatumTyped
-                   -> RedeemerTyped
+makeValidatorTyped :: BuiltinData
+                   -> BuiltinData
                    -> ScriptContext
                    -> Bool
-makeValidatorTyped _ _ ScriptContext{..} = True
+makeValidatorTyped _ _ _ = True
 
 
 data ExampleTyped
 
 instance ValidatorTypes ExampleTyped  where
-    type instance DatumType    ExampleTyped  = DatumTyped
-    type instance RedeemerType ExampleTyped  = RedeemerTyped
+    type instance DatumType    ExampleTyped  = BuiltinData
+    type instance RedeemerType ExampleTyped  = BuiltinData
 
 
 instanceTyped :: TypedValidator ExampleTyped
@@ -87,12 +86,58 @@ instanceTyped =
     $$(compile [|| makeValidatorTyped ||])
       $$(compile [|| wrap ||])
     where
-      wrap = wrapValidator @DatumTyped @RedeemerTyped
+      wrap = wrapValidator @BuiltinData @BuiltinData
 
 
 validatorTyped :: Validator
 validatorTyped = validatorScript instanceTyped
 
 
-serialiseTyped :: SBS.ShortByteString
-serialiseTyped = SBS.toShort . LBS.toStrict . serialise $ unValidatorScript validatorTyped
+-- Typed validator that always succeeds.
+
+
+data DatumTyped =
+    DTA Integer
+  | DTB Integer
+
+
+data RedeemerTyped =
+    RTA Integer
+  | RTB Integer
+
+
+{-# INLINABLE makeValidatorTyped1 #-}
+
+makeValidatorTyped1 :: DatumTyped
+                    -> RedeemerTyped
+                    -> ScriptContext
+                    -> Bool
+makeValidatorTyped1 _ _ _ = True
+
+
+data ExampleTyped1
+
+instance ValidatorTypes ExampleTyped1  where
+    type instance DatumType    ExampleTyped1  = DatumTyped
+    type instance RedeemerType ExampleTyped1  = RedeemerTyped
+
+
+instanceTyped1 :: TypedValidator ExampleTyped1
+instanceTyped1 =
+  mkTypedValidator @ExampleTyped1
+    $$(compile [|| makeValidatorTyped1 ||])
+      $$(compile [|| wrap ||])
+    where
+      wrap = wrapValidator @DatumTyped @RedeemerTyped
+
+
+validatorTyped1 :: Validator
+validatorTyped1 = validatorScript instanceTyped1
+
+
+makeLift ''DatumTyped
+makeIsDataIndexed ''DatumTyped [('DTA, 0), ('DTB, 1)]
+
+
+makeLift ''RedeemerTyped
+makeIsDataIndexed ''RedeemerTyped [('RTA, 0), ('RTB, 1)]
